@@ -53,9 +53,8 @@ class NumberMaze:
 
     def __init__(self, shape: typing.Union[int, typing.Tuple, np.ndarray], verbose=False):
         """
-        :param shape: int, tuple of int, numpy array. When given an int or tuple of int,
-        a random maze of the size is initialized. When given a numpy array, the maze is initialized
-        from the given array.
+        :param shape: int, tuple of int, numpy array. When given an int or tuple of int, a random maze of the size is
+            initialized. When given a numpy array, the maze is initialized from the given array.
         :param verbose: whether to print internal steps when initializing a random maze
         """
         if isinstance(shape, np.ndarray):
@@ -140,11 +139,12 @@ class NumberMaze:
         return new_pos
 
     def maze_to_df(self):
-        return pd.DataFrame(data=self.maze, index=range(1, self.shape[0] + 1), columns=range(1, self.shape[1] + 1))
+        return pd.DataFrame(data=self.maze, index=range(self.shape[0]), columns=range(self.shape[1]))
 
     def all_paths_to_exit_to_str(self) -> str:
         """
         All the paths to exit to string
+
         :return: string representing all the paths to exist
         """
         return self.paths_to_str(self.all_paths_to_exit)
@@ -172,6 +172,7 @@ class NumberMaze:
             typing.Tuple[typing.List[Position], typing.List[int]]:
         """
         Initial a random path form start to exist on an empty maze
+
         :param max_path_steps: maximum steps of the path to try
         :param max_step_try: for each random step, the number of try of the next movement
         :param verbose: whether print internal steps or not
