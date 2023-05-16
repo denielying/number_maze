@@ -6,6 +6,42 @@ Position = typing.Tuple[int, int]
 
 
 class NumberMaze:
+    """
+    Class of number maze
+
+    Parameters
+    ----------
+    shape: int, tuple of int, numpy array
+        When given an int or tuple of int, a random maze of the size is initialized.
+        When given a numpy array, the maze is initialized from the given array.
+
+    verbose: bool
+        Whether to print internal steps when initializing a random maze
+
+    Attributes
+    ----------
+    maze: numpy ndarray
+        the number maze grid in numpy array
+
+    shape: (int, int)
+        tuple indicating the shape of the maze
+
+    maze_start: (int, int)
+        the start position of the maze
+
+    maze_exit: (int, int)
+        the exit position of the maze
+
+    maze_adjacency_list: dict[Position, list[Position]]
+        the maze graph as an adjacency list
+
+    all_paths:
+        List of paths of all the paths starting from the maze start
+
+    all_paths_to_exit:
+        List of all the paths from maze start to exit
+    """
+
     moving_directions = ['up', 'down', 'left', 'right']
     moving_direction_dimension = {
         _d: _i // 2 for _i, _d in enumerate(moving_directions)
@@ -16,20 +52,29 @@ class NumberMaze:
     num_dim = len(moving_directions) // 2
 
     def __init__(self, shape: typing.Union[int, typing.Tuple, np.ndarray], verbose=False):
+        """
+        :param shape: int, tuple of int, numpy array. When given an int or tuple of int,
+        a random maze of the size is initialized. When given a numpy array, the maze is initialized
+        from the given array.
+        :param verbose: whether to print internal steps when initializing a random maze
+        """
         if isinstance(shape, np.ndarray):
             self.maze = shape
             self.shape = self.maze.shape
+            self.maze_start = np.unravel_index(0, shape=self.shape)
+            self.maze_exit = np.unravel_index(np.prod(self.shape) - 1, shape=self.shape)
+            self.maze[self.maze_exit] = -1
         else:
             self.shape = shape if isinstance(shape, tuple) else tuple([shape] * self.num_dim)
             self.maze = self.random_step_num(max(self.shape) - 1, shape=self.shape)
             self.maze_start = np.unravel_index(0, shape=self.shape)
             self.maze_exit = np.unravel_index(np.prod(self.shape) - 1, shape=self.shape)
             self.maze[self.maze_exit] = -1
-            self.init_path, self.init_steps = self._init_random_path(verbose=verbose)
-            self._set_path_steps(self.maze, self.init_path, self.init_steps)
+            init_path, init_steps = self._init_random_path(verbose=verbose)
+            self._set_path_steps(self.maze, init_path, init_steps)
         self.maze_adjacency_list = self._maze_to_adjacency_list()
-        self.all_paths = self.find_all_paths(self.maze_adjacency_list, self.maze_start)
-        self.all_paths_to_exit = [p for p in self.all_paths if p[-1] == self.maze_exit]
+        self.all_paths: typing.List[typing.List[Position]] = self.find_all_paths(self.maze_adjacency_list, self.maze_start)
+        self.all_paths_to_exit: typing.List[typing.List[Position]] = [p for p in self.all_paths if p[-1] == self.maze_exit]
 
     def in_grid(self, pos: Position) -> bool:
         invalid_dims = [not 0 <= pos[_i] < self.shape[_i] for _i in range(self.num_dim)]
@@ -39,14 +84,6 @@ class NumberMaze:
         if not self.in_grid(pos):
             raise RuntimeError(f"Position {pos} is out of the grid")
         return pos
-
-    def get_init_path_in_maze(self) -> np.ndarray:
-        """Get the path in numpy ndarray format with non-path entries set to 0"""
-        return self._get_path_in_maze(self.init_path, self.init_steps)
-
-    # @staticmethod
-    # def grid_position(*args) -> Position:
-    #     return args
 
     @staticmethod
     def moving_dimension_forward(direction: str):
@@ -102,6 +139,16 @@ class NumberMaze:
                 f'Moving from {pos} by {steps} step(s) in opposite of {direction} direction is not allowed')
         return new_pos
 
+    def maze_to_df(self):
+        return pd.DataFrame(data=self.maze, index=range(1, self.shape[0] + 1), columns=range(1, self.shape[1] + 1))
+
+    def all_paths_to_exit_to_str(self) -> str:
+        """
+        All the paths to exit to string
+        :return: string representing all the paths to exist
+        """
+        return self.paths_to_str(self.all_paths_to_exit)
+
     def _max_steps(self, dim: int, forward: bool, pos) -> int:
         return (self.shape[dim] - 1 - pos[dim]) if forward else pos[dim]
 
@@ -146,7 +193,7 @@ class NumberMaze:
             if verbose:
                 print(f"Random path position {_i + 1}:")
             while _try <= max_step_try:
-                max_steps_dict: Dict[str, int] = self.max_steps(pos)
+                max_steps_dict: typing.Dict[str, int] = self.max_steps(pos)
                 new_dirc = np.random.choice([d for d, n in max_steps_dict.items() if n > 0 and d != dirc])
                 mv_steps = self.random_step_num(max_steps_dict[new_dirc])
                 new_pos = self._move(*self.moving_dimension_forward(new_dirc), pos, mv_steps)
@@ -185,7 +232,7 @@ class NumberMaze:
         return adjacency_dict
 
     @staticmethod
-    def find_all_paths(graph, start, path=None):
+    def find_all_paths(graph, start, path=None) -> typing.List[typing.List[Position]]:
         """
         Find all paths starting from the start
 
@@ -215,17 +262,10 @@ class NumberMaze:
         return paths
 
     @staticmethod
-    def to_1_based_index(pos: Position) -> Position:
-        return tuple(map(lambda x: x + 1, pos))
-
-    @staticmethod
     def random_step_num(n, shape=None):
         k = np.random.randint(1, n * (n + 1) / 2 + 1, size=shape)
         return np.ceil((np.sqrt(8 * k + 1) - 1) / 2).astype(int)
 
     @staticmethod
     def paths_to_str(path_list: typing.List[typing.List[Position]]):
-        return "\n".join(map(lambda path: ' -> '.join([str(NumberMaze.to_1_based_index(p)) for p in path]), path_list))
-
-    def maze_to_df(self):
-        return pd.DataFrame(data=self.maze, index=range(1, self.shape[0] + 1), columns=range(1, self.shape[1] + 1))
+        return "\n".join(map(lambda path: ' -> '.join([str(p) for p in path]), path_list))

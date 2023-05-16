@@ -12,3 +12,7 @@ you can only move down for 3 steps to (d, B), since move to the left or right fo
 |   b |  2  |  1  |  2  |  2  |
 |   c |  2  |  2  |  1  |  3  |
 |   d |  3  |  3  |  3  | -1  |
+
+
+1. **Maze puzzles:** There are several maze puzzles in the `data` directory.
+2. **Code usage:** Example codes to create a given number maze or a random maze can be found in `tests` directory.
