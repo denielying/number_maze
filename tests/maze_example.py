@@ -21,7 +21,7 @@ if __name__ == '__main__':
 
     # --------------------------------------------
     # randomly create a maze of a given size
-    rand_maze = NumberMaze(shape=5)
+    rand_maze = NumberMaze(shape=4, difficult_level=2)
 
     print("Number Maze:")
     print(rand_maze.maze_to_df())

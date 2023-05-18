@@ -9,15 +9,6 @@ class NumberMaze:
     """
     Class of number maze
 
-    Parameters
-    ----------
-    shape: int, tuple of int, numpy array
-        When given an int or tuple of int, a random maze of the size is initialized.
-        When given a numpy array, the maze is initialized from the given array.
-
-    verbose: bool
-        Whether to print internal steps when initializing a random maze
-
     Attributes
     ----------
     maze: numpy ndarray
@@ -51,11 +42,13 @@ class NumberMaze:
     }  # {'up': False, 'down': True, 'left': False, 'right': True}
     num_dim = len(moving_directions) // 2
 
-    def __init__(self, shape: typing.Union[int, typing.Tuple, np.ndarray], verbose=False):
+    def __init__(self, shape: typing.Union[int, typing.Tuple, np.ndarray], difficult_level=0, max_init_try=10000):
         """
         :param shape: int, tuple of int, numpy array. When given an int or tuple of int, a random maze of the size is
             initialized. When given a numpy array, the maze is initialized from the given array.
-        :param verbose: whether to print internal steps when initializing a random maze
+        :param difficult_level: int, level of maze difficulty in initialization (default 0, randomly create one).
+            Currently, only 0, 1, or 2 is supported.
+        :param max_init_try: number of attempts when creating a maze with the given difficult level
         """
         if isinstance(shape, np.ndarray):
             self.maze = shape
@@ -63,17 +56,33 @@ class NumberMaze:
             self.maze_start = np.unravel_index(0, shape=self.shape)
             self.maze_exit = np.unravel_index(np.prod(self.shape) - 1, shape=self.shape)
             self.maze[self.maze_exit] = 0
+            self.maze_adjacency_list, self.all_paths, self.all_paths_to_exit = self._set_maze_paths()
         else:
             self.shape = shape if isinstance(shape, tuple) else tuple([shape] * self.num_dim)
-            self.maze = self.random_step_num(max(self.shape) - 1, shape=self.shape)
             self.maze_start = np.unravel_index(0, shape=self.shape)
             self.maze_exit = np.unravel_index(np.prod(self.shape) - 1, shape=self.shape)
-            self.maze[self.maze_exit] = 0
-            init_path, init_steps = self._init_random_path(verbose=verbose)
-            self._set_path_steps(self.maze, init_path, init_steps)
-        self.maze_adjacency_list = self._maze_to_adjacency_list()
-        self.all_paths: typing.List[typing.List[Position]] = self.find_all_paths(self.maze_adjacency_list, self.maze_start)
-        self.all_paths_to_exit: typing.List[typing.List[Position]] = [p for p in self.all_paths if p[-1] == self.maze_exit]
+            _max_init_try = max_init_try if difficult_level > 0 else 3*max(self.shape)
+            _init_successful = False
+            for _i in range(_max_init_try):
+                self.maze = self._random_step_num(max(self.shape) - 1, shape=self.shape)
+                self.maze[self.maze_exit] = 0
+                try:
+                    init_path, init_steps = self._init_random_path(verbose=False)
+                    self._set_path_steps(self.maze, init_path, init_steps)
+                    self.maze_adjacency_list, self.all_paths, self.all_paths_to_exit = self._set_maze_paths()
+                    if difficult_level > 0:
+                        difficult_param = np.log(difficult_level) + 1
+                        if len(self.all_paths_to_exit) == 1 and len(self.all_paths_to_exit[0]) >= difficult_param * max(self.shape) and len(self.all_paths) >= difficult_param * max(self.shape):
+                            _init_successful = True
+                            break
+                    else:
+                        _init_successful = True
+                        break
+                except RuntimeError:
+                    pass
+
+            if not _init_successful:
+                raise RuntimeError(f"Creating a random maze with difficult level {difficult_level} failed after {_max_init_try} Attempts")
 
     def in_grid(self, pos: Position) -> bool:
         invalid_dims = [not 0 <= pos[_i] < self.shape[_i] for _i in range(self.num_dim)]
@@ -84,14 +93,10 @@ class NumberMaze:
             raise RuntimeError(f"Position {pos} is out of the grid")
         return pos
 
-    @staticmethod
-    def moving_dimension_forward(direction: str):
-        return NumberMaze.moving_direction_dimension[direction], NumberMaze.moving_direction_forward[direction]
-
     def max_steps(self, pos) -> typing.Dict[str, int]:
         """Find the max number of steps of each direction, return a dict with direction as key"""
         return dict(
-            map(lambda _d: (_d, self._max_steps(*self.moving_dimension_forward(_d), pos)), self.moving_directions)
+            map(lambda _d: (_d, self._max_steps(*self._moving_dimension_forward(_d), pos)), self.moving_directions)
         )
 
     def move(self, direction: str, pos: Position, steps: int) -> Position:
@@ -107,7 +112,7 @@ class NumberMaze:
         if (direction := direction.lower()) not in self.moving_directions:
             raise RuntimeError(f'Moving direction \'{direction}\' is not in {self.moving_directions}')
 
-        new_pos = self._move(*self.moving_dimension_forward(direction), pos, steps)
+        new_pos = self._move(*self._moving_dimension_forward(direction), pos, steps)
 
         if not self.in_grid(new_pos):
             raise RuntimeError(f'Moving {direction} from {pos} by {steps} step(s) is not allowed')
@@ -119,7 +124,7 @@ class NumberMaze:
         """
         position_list = []
         for _d in self.moving_directions:
-            mv_dim, mv_f = self.moving_dimension_forward(_d)
+            mv_dim, mv_f = self._moving_dimension_forward(_d)
             max_num_steps = self._max_steps(mv_dim, mv_f, pos)
             if max_num_steps >= steps:
                 new_pos = self._move(mv_dim, mv_f, pos, steps)
@@ -131,7 +136,7 @@ class NumberMaze:
         """
         Move in the opposite of the specified direction for n steps
         """
-        d, f = self.moving_dimension_forward(direction)
+        d, f = self._moving_dimension_forward(direction)
         new_pos = self._move(d, not f, pos, steps)
         if not self.in_grid(new_pos):
             raise RuntimeError(
@@ -148,6 +153,15 @@ class NumberMaze:
         :return: string representing all the paths to exist
         """
         return self.paths_to_str(self.all_paths_to_exit)
+
+    @staticmethod
+    def paths_to_str(path_list: typing.List[typing.List[Position]]):
+        return "\n".join(map(lambda path: ' -> '.join([str(p) for p in path]), path_list))
+
+    @staticmethod
+    def _moving_dimension_forward(direction: str):
+        """Given a direction string, return the corresponding dimension and forward/backward"""
+        return NumberMaze.moving_direction_dimension[direction], NumberMaze.moving_direction_forward[direction]
 
     def _max_steps(self, dim: int, forward: bool, pos) -> int:
         return (self.shape[dim] - 1 - pos[dim]) if forward else pos[dim]
@@ -167,6 +181,13 @@ class NumberMaze:
         m = np.zeros(self.maze.shape)
         self._set_path_steps(m, path, steps)
         return m
+
+    def _set_maze_paths(self):
+        """Given maze array, return its adjacency list and all paths"""
+        maze_adjacency_list = self._maze_to_adjacency_list()
+        all_paths: typing.List[typing.List[Position]] = self.find_all_paths(maze_adjacency_list, self.maze_start)
+        all_paths_to_exit: typing.List[typing.List[Position]] = [p for p in all_paths if p[-1] == self.maze_exit]
+        return maze_adjacency_list, all_paths, all_paths_to_exit
 
     def _init_random_path(self, max_path_steps: int = 0, max_step_try: int = 0, verbose=False) -> \
             typing.Tuple[typing.List[Position], typing.List[int]]:
@@ -196,8 +217,8 @@ class NumberMaze:
             while _try <= max_step_try:
                 max_steps_dict: typing.Dict[str, int] = self.max_steps(pos)
                 new_dirc = np.random.choice([d for d, n in max_steps_dict.items() if n > 0 and d != dirc])
-                mv_steps = self.random_step_num(max_steps_dict[new_dirc])
-                new_pos = self._move(*self.moving_dimension_forward(new_dirc), pos, mv_steps)
+                mv_steps = self._random_step_num(max_steps_dict[new_dirc])
+                new_pos = self._move(*self._moving_dimension_forward(new_dirc), pos, mv_steps)
                 possible_new_pos = self.get_all_next_positions(pos, mv_steps)
                 if self.maze_exit in possible_new_pos:
                     new_pos = self.maze_exit
@@ -263,10 +284,6 @@ class NumberMaze:
         return paths
 
     @staticmethod
-    def random_step_num(n, shape=None):
+    def _random_step_num(n, shape=None):
         k = np.random.randint(1, n * (n + 1) / 2 + 1, size=shape)
         return np.ceil((np.sqrt(8 * k + 1) - 1) / 2).astype(int)
-
-    @staticmethod
-    def paths_to_str(path_list: typing.List[typing.List[Position]]):
-        return "\n".join(map(lambda path: ' -> '.join([str(p) for p in path]), path_list))
