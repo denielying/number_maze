@@ -62,13 +62,13 @@ class NumberMaze:
             self.shape = self.maze.shape
             self.maze_start = np.unravel_index(0, shape=self.shape)
             self.maze_exit = np.unravel_index(np.prod(self.shape) - 1, shape=self.shape)
-            self.maze[self.maze_exit] = -1
+            self.maze[self.maze_exit] = 0
         else:
             self.shape = shape if isinstance(shape, tuple) else tuple([shape] * self.num_dim)
             self.maze = self.random_step_num(max(self.shape) - 1, shape=self.shape)
             self.maze_start = np.unravel_index(0, shape=self.shape)
             self.maze_exit = np.unravel_index(np.prod(self.shape) - 1, shape=self.shape)
-            self.maze[self.maze_exit] = -1
+            self.maze[self.maze_exit] = 0
             init_path, init_steps = self._init_random_path(verbose=verbose)
             self._set_path_steps(self.maze, init_path, init_steps)
         self.maze_adjacency_list = self._maze_to_adjacency_list()
@@ -168,13 +168,13 @@ class NumberMaze:
         self._set_path_steps(m, path, steps)
         return m
 
-    def _init_random_path(self, max_path_steps: int = -1, max_step_try: int = -1, verbose=False) -> \
+    def _init_random_path(self, max_path_steps: int = 0, max_step_try: int = 0, verbose=False) -> \
             typing.Tuple[typing.List[Position], typing.List[int]]:
         """
         Initial a random path form start to exist on an empty maze
 
-        :param max_path_steps: maximum steps of the path to try
-        :param max_step_try: for each random step, the number of try of the next movement
+        :param max_path_steps: maximum steps of the path to try, when set to 0, it uses `max(self.shape) ** 2`
+        :param max_step_try: for each random step, the number of try of the next movement, for 2d maze, default is 4
         :param verbose: whether print internal steps or not
         :return: position list of the path, number of grid of each movement
         """
