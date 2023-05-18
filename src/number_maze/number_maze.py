@@ -72,7 +72,10 @@ class NumberMaze:
                     self.maze_adjacency_list, self.all_paths, self.all_paths_to_exit = self._set_maze_paths()
                     if difficult_level > 0:
                         difficult_param = np.log(difficult_level) + 1
-                        if len(self.all_paths_to_exit) == 1 and len(self.all_paths_to_exit[0]) >= difficult_param * max(self.shape) and len(self.all_paths) >= difficult_param * max(self.shape):
+                        if (len(self.all_paths_to_exit) == 1
+                                and len(self.all_paths_to_exit[0]) >= difficult_param * max(self.shape)
+                                and len(self.all_paths) >= difficult_param * max(self.shape)):
+                            # if only 1 solution exists, and the solution is long enough, and there are many other paths from the start but not to the exit
                             _init_successful = True
                             break
                     else:
@@ -82,7 +85,9 @@ class NumberMaze:
                     pass
 
             if not _init_successful:
-                raise RuntimeError(f"Creating a random maze with difficult level {difficult_level} failed after {_max_init_try} Attempts")
+                raise RuntimeError(
+                    f"Failed to create a maze with difficult level {difficult_level} after {_max_init_try} attempts"
+                )
 
     def in_grid(self, pos: Position) -> bool:
         invalid_dims = [not 0 <= pos[_i] < self.shape[_i] for _i in range(self.num_dim)]

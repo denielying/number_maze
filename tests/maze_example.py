@@ -21,14 +21,10 @@ if __name__ == '__main__':
 
     # --------------------------------------------
     # randomly create a maze of a given size
-    rand_maze = NumberMaze(shape=4, difficult_level=2)
+    rand_maze = NumberMaze(shape=4, difficult_level=2, max_init_try=10000)
 
     print("Number Maze:")
     print(rand_maze.maze_to_df())
     print()
     print("Path to exit:")
     print(rand_maze.all_paths_to_exit_to_str())
-
-
-
-
