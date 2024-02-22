@@ -289,6 +289,15 @@ class NumberMaze:
         return paths
 
     @staticmethod
-    def _random_step_num(n, shape=None):
+    def _random_step_num(n: int, shape: typing.Optional[Position]=None):
+        """
+        Create a randome matrix with the number of steps
+        Args:
+            n (int): parameter to control the max random step number
+            shape (tuple[int, int], optional): shape of the output 2d-array. Defaults to None.
+
+        Returns:
+            _type_: _description_
+        """
         k = np.random.randint(1, n * (n + 1) / 2 + 1, size=shape)
         return np.ceil((np.sqrt(8 * k + 1) - 1) / 2).astype(int)
