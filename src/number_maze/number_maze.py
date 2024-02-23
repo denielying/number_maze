@@ -2,7 +2,7 @@ import typing
 import numpy as np
 import pandas as pd
 
-Position = typing.Tuple[int, int]
+Position = tuple[int, int]
 
 
 class NumberMaze:
@@ -175,7 +175,7 @@ class NumberMaze:
     def _move(dim: int, forward: bool, pos: Position, steps: int) -> Position:
         new_pos_list = list(pos)
         new_pos_list[dim] += (steps if forward else -steps)
-        return tuple(new_pos_list)
+        return new_pos_list[0], new_pos_list[1]
 
     @staticmethod
     def _set_path_steps(maze_ndarray, path: typing.List[Position], steps: typing.List[int]) -> None:
@@ -299,5 +299,5 @@ class NumberMaze:
         Returns:
             _type_: _description_
         """
-        k = np.random.randint(1, n * (n + 1) / 2 + 1, size=shape)
+        k = np.random.randint(1, n * (n + 1) // 2 + 1, size=shape)
         return np.ceil((np.sqrt(8 * k + 1) - 1) / 2).astype(int)
